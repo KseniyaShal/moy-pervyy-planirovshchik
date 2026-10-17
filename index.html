@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Личный недельный планировщик тренировок с сохранением в браузере.">
+  <title>Планировщик-мотивировщик</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <span class="hero-leaf" aria-hidden="true">🌿</span>
+      <h1>Планировщик-<wbr>мотивировщик</h1>
+      <p>Планируй движение, отмечай результат, поддерживай себя 🌿</p>
+    </header>
+
+    <section class="week-panel" aria-labelledby="week-title">
+      <h2 id="week-title" tabindex="-1"></h2>
+      <nav class="week-nav" aria-label="Выбор недели">
+        <button id="previous-week" type="button">Предыдущая неделя</button>
+        <button id="current-week" class="is-active" type="button" aria-current="true">Текущая неделя</button>
+        <button id="next-week" type="button">Следующая неделя</button>
+      </nav>
+    </section>
+
+    <section id="storage-warning" class="storage-warning" role="alert" hidden>
+      <p id="storage-message"></p>
+      <button id="retry-storage" type="button">Проверить снова</button>
+    </section>
+    <p id="notification" class="notification" role="status" aria-live="polite" hidden></p>
+
+    <section id="empty-week" class="empty-week" aria-label="Пустая неделя" hidden>
+      <p>На эту неделю пока ничего не запланировано 🌿</p>
+      <button id="plan-training" class="button-primary" type="button">Запланировать тренировку</button>
+    </section>
+
+    <section id="week-days" class="week-days" aria-label="Тренировки на неделю"></section>
+
+    <section class="summary" aria-labelledby="summary-title">
+      <h2 id="summary-title">Итоги недели</h2>
+      <div class="summary-grid">
+        <section class="summary-plan" aria-labelledby="plan-title">
+          <h3 id="plan-title">План</h3>
+          <p id="planned-count" class="summary-count"></p>
+          <p id="planned-time" class="summary-time"></p>
+        </section>
+        <section class="summary-fact" aria-labelledby="fact-title">
+          <h3 id="fact-title">Факт</h3>
+          <p id="actual-count" class="summary-count"></p>
+          <p id="actual-time" class="summary-time"></p>
+        </section>
+      </div>
+      <p id="summary-difference" class="summary-difference" hidden></p>
+      <p id="summary-note" class="summary-note" hidden></p>
+      <p id="summary-message" class="summary-message" aria-live="polite" hidden></p>
+    </section>
+
+    <footer>
+      <p id="storage-caption">Данные сохраняются в этом браузере</p>
+      <button id="clear-planner" type="button" disabled>Очистить все данные</button>
+      <p id="clear-hint" class="field-hint">Пока нечего очищать</p>
+    </footer>
+    <noscript><p class="storage-warning">Для работы планировщика включи JavaScript в браузере</p></noscript>
+  </main>
+
+  <dialog id="training-dialog" aria-labelledby="dialog-title">
+    <div class="dialog-content">
+      <div class="dialog-header">
+        <h2 id="dialog-title"></h2>
+        <button id="close-dialog" class="close-button" type="button" aria-label="Закрыть">✕</button>
+      </div>
+      <p id="dialog-storage-update" class="save-error" role="alert" hidden>Данные изменились в другой вкладке. Закрой окно и повтори действие</p>
+      <form id="training-form" novalidate>
+        <div class="field">
+          <label for="activity">Активность</label>
+          <input id="activity" name="activity" type="text" required autocomplete="off" aria-describedby="activity-error">
+          <p id="activity-error" class="field-error" hidden></p>
+        </div>
+        <div class="field">
+          <label for="training-date">Дата</label>
+          <input id="training-date" name="date" type="date" min="1900-01-01" max="2099-12-31" step="1" required aria-describedby="date-error">
+          <p id="date-error" class="field-error" hidden></p>
+          <p id="date-correction-note" class="field-hint" hidden>Исправление даты сохранит результат и учтёт его в неделе новой даты</p>
+        </div>
+        <fieldset class="duration-field">
+          <legend>Планируемая продолжительность</legend>
+          <div class="duration-inputs">
+            <div class="field">
+              <label for="planned-hours">Часы</label>
+              <input id="planned-hours" name="hours" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" aria-describedby="hours-error">
+              <p id="hours-error" class="field-error" hidden></p>
+            </div>
+            <div class="field">
+              <label for="planned-minutes">Минуты</label>
+              <input id="planned-minutes" name="minutes" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" aria-describedby="minutes-error">
+              <p id="minutes-error" class="field-error" hidden></p>
+            </div>
+          </div>
+        </fieldset>
+        <p id="save-error" class="save-error" role="alert" hidden></p>
+        <div class="dialog-actions">
+          <button id="cancel-form" type="button">Отмена</button>
+          <button id="save-training" class="button-primary" type="submit">Добавить</button>
+        </div>
+      </form>
+      <form id="result-form" novalidate hidden>
+        <div id="result-context" class="result-context"></div>
+        <fieldset class="duration-field">
+          <legend>Фактическая продолжительность</legend>
+          <div class="duration-inputs">
+            <div class="field">
+              <label for="actual-hours">Часы</label>
+              <input id="actual-hours" name="hours" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" aria-describedby="actual-hours-error">
+              <p id="actual-hours-error" class="field-error" hidden></p>
+            </div>
+            <div class="field">
+              <label for="actual-minutes">Минуты</label>
+              <input id="actual-minutes" name="minutes" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" aria-describedby="actual-minutes-error">
+              <p id="actual-minutes-error" class="field-error" hidden></p>
+            </div>
+          </div>
+        </fieldset>
+        <p id="result-error" class="save-error" role="alert" hidden></p>
+        <button id="skip-result" class="button-skip" type="button">Отметить пропуск</button>
+        <div class="dialog-actions">
+          <button id="cancel-result" type="button">Отмена</button>
+          <button id="save-result" class="button-primary" type="submit">Сохранить результат</button>
+        </div>
+      </form>
+      <form id="transfer-form" novalidate hidden>
+        <div id="transfer-context" class="result-context"></div>
+        <div class="field">
+          <label for="transfer-date">Новая дата</label>
+          <div class="date-with-weekday">
+            <input id="transfer-date" name="date" type="date" min="1900-01-01" max="2099-12-31" step="1" required aria-describedby="transfer-weekday transfer-date-error">
+            <span id="transfer-weekday" class="date-weekday" aria-live="polite" hidden></span>
+          </div>
+          <p id="transfer-date-error" class="field-error" hidden></p>
+        </div>
+        <p id="transfer-error" class="save-error" role="alert" hidden></p>
+        <div class="dialog-actions">
+          <button id="cancel-transfer" type="button">Отмена</button>
+          <button id="save-transfer" class="button-primary button-transfer" type="submit">Перенести</button>
+        </div>
+      </form>
+      <section id="clear-confirmation" hidden>
+        <p id="clear-message"></p>
+        <label class="confirmation-check" for="clear-understood">
+          <input id="clear-understood" type="checkbox">
+          <span>Понимаю, что все тренировки будут удалены без восстановления</span>
+        </label>
+        <p id="clear-error" class="save-error" role="alert" hidden></p>
+        <div class="dialog-actions">
+          <button id="cancel-clear" type="button">Отмена</button>
+          <button id="confirm-clear" class="button-danger" type="button" disabled>Удалить все тренировки</button>
+        </div>
+      </section>
+      <section id="delete-confirmation" hidden>
+        <p id="delete-message"></p>
+        <p id="delete-error" class="save-error" role="alert" hidden></p>
+        <div class="dialog-actions">
+          <button id="cancel-delete" type="button">Отмена</button>
+          <button id="confirm-delete" class="button-danger" type="button">Удалить</button>
+        </div>
+      </section>
+      <div id="dialog-storage-retry" class="dialog-storage-retry" hidden>
+        <button id="retry-storage-dialog" type="button">Проверить снова</button>
+      </div>
+    </div>
+  </dialog>
+</body>
+</html>
